@@ -1,4 +1,7 @@
-// Build : génère le userscript ET l'extension depuis la source unique (src/).
+// Build : génère trois sorties dans dist/.
+//   - utub-short-kill.user.js  userscript (téléphone / Tampermonkey)  ← src/core
+//   - extension/               extension générique (Firefox, Safari)  ← src/core
+//   - chrome/                  extension Chrome/Chromium « unpacked »  ← src/chrome
 import { build } from "esbuild";
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -59,6 +62,9 @@ const manifest = {
   version: VERSION,
   description: "Masque les YouTube Shorts (sauf sur les chaînes) et protège leur accès par 3 questions.",
   icons: { 48: "icons/icon-48.png", 128: "icons/icon-128.png" },
+  // Sans cette permission, chrome/browser.storage n'existe pas dans le content
+  // script : réglages et déblocage n'étaient jamais enregistrés.
+  permissions: ["storage"],
   content_scripts: [
     {
       matches: ["*://*.youtube.com/*", "*://youtube.com/*"],
@@ -75,6 +81,31 @@ writeFileSync(join(ROOT, "dist/extension/manifest.json"), JSON.stringify(manifes
 cpSync(join(ROOT, "icons/icon-48.png"), join(ROOT, "dist/extension/icons/icon-48.png"));
 cpSync(join(ROOT, "icons/icon-128.png"), join(ROOT, "dist/extension/icons/icon-128.png"));
 
-console.log("build OK — v" + VERSION);
-console.log("  dist/utub-short-kill.user.js");
-console.log("  dist/extension/ (manifest.json + content.js + icons)");
+// 5) Extension Chrome (src/chrome) : cœur dédié, piloté par événements.
+//    Sa version vit dans src/chrome/manifest.json, indépendante du userscript.
+const CHROME = join(ROOT, "src/chrome");
+const chromeManifest = JSON.parse(readFileSync(join(CHROME, "manifest.json"), "utf8"));
+mkdirSync(join(ROOT, "dist/chrome"), { recursive: true });
+await build({
+  ...common,
+  target: ["chrome" + chromeManifest.minimum_chrome_version],
+  entryPoints: [join(CHROME, "content.js")],
+  outfile: join(ROOT, "dist/chrome/content.js")
+});
+// CSS injecté nativement par Chrome (clé "css" du manifest) : la feuille
+// commune, puis les règles propres à l'extension.
+writeFileSync(
+  join(ROOT, "dist/chrome/content.css"),
+  readFileSync(join(ROOT, "src/styles/index.css"), "utf8") + "\n" + readFileSync(join(CHROME, "extra.css"), "utf8")
+);
+cpSync(join(CHROME, "manifest.json"), join(ROOT, "dist/chrome/manifest.json"));
+cpSync(join(CHROME, "background.js"), join(ROOT, "dist/chrome/background.js"));
+mkdirSync(join(ROOT, "dist/chrome/icons"));
+for (const size of Object.keys(chromeManifest.icons)) {
+  cpSync(join(CHROME, "icons/icon-" + size + ".png"), join(ROOT, "dist/chrome/icons/icon-" + size + ".png"));
+}
+
+console.log("build OK");
+console.log("  dist/utub-short-kill.user.js  v" + VERSION);
+console.log("  dist/extension/               v" + VERSION);
+console.log("  dist/chrome/                  v" + chromeManifest.version);
