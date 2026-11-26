@@ -7,8 +7,9 @@ recommandations, barre latérale, barre de navigation mobile — **sauf sur la p
 d'une chaîne de créateur**. Pour ouvrir un Short, il faut **répondre manuellement à
 3 questions** : juste assez de friction pour ne pas s'y perdre.
 
-**Un seul code source** (`src/core/`) génère, via un petit build, **deux formats** :
-un **userscript** (le plus simple, ordi + iPhone) et une **extension** Manifest V3.
+Deux façons de l'installer, à partir du même dépôt :
+un **userscript** (iPhone, et tout navigateur avec Tampermonkey) et une
+**extension Chrome** à charger en « unpacked » (Chrome, Dia, Edge, Brave…).
 
 ## Ce que ça fait
 
@@ -22,47 +23,69 @@ un **userscript** (le plus simple, ordi + iPhone) et une **extension** Manifest 
 
 ## Installation
 
-> **Recommandé : le userscript.** Même méthode sur ordinateur et iPhone, aucune
-> compilation de ta part, et il **se met à jour tout seul**.
+| Où | Quoi installer |
+| --- | --- |
+| **Ordinateur — Chrome, Dia, Edge, Brave** | l'**extension Chrome** (`dist/chrome`), sans Tampermonkey |
+| **iPhone — Safari** | le **userscript**, via l'app Userscripts |
+| Autres navigateurs (Firefox, Safari macOS) | le **userscript**, via Tampermonkey |
 
-Lien du script (à ouvrir / coller) :
+### Ordinateur — extension Chrome (Chrome, Dia, Edge, Brave)
+
+1. Récupère le dépôt (à faire une fois) :
+   ```bash
+   git clone https://github.com/WicktorB/YouTube-Short-Kill.git
+   ```
+2. Ouvre `chrome://extensions`, active le **mode développeur**, clique
+   *Charger l'extension non empaquetée* et choisis le dossier **`dist/chrome`**.
+3. Recharge tes onglets YouTube. Épingle l'icône : un clic dessus ouvre les réglages.
+
+**Mettre à jour** : `git pull` dans le dossier, puis le bouton ↻ de l'extension
+dans `chrome://extensions`.
+
+- **Ne déplace pas le dossier** une fois l'extension chargée : son identifiant
+  dépend du chemin, et tes réglages avec.
+- Si tu utilisais le userscript sur ce navigateur, **désactive-le dans
+  Tampermonkey** (sinon les deux tournent en même temps). Ses réglages ne sont
+  pas repris : à ressaisir une fois dans le panneau.
+
+### Userscript
+
+Il **se met à jour tout seul**. Lien du script (à ouvrir / coller) :
 
 ```
 https://raw.githubusercontent.com/WicktorB/YouTube-Short-Kill/main/dist/utub-short-kill.user.js
 ```
 
-### Ordinateur — Chrome, Edge, Brave, Firefox, Safari
+#### Ordinateur — Firefox, Safari (ou Chrome si tu préfères Tampermonkey)
 1. Installe **Tampermonkey** (gratuit) depuis le magasin d'extensions de ton navigateur.
 2. Ouvre le lien du script ci-dessus → Tampermonkey affiche une page **« Installer »** → clique **Installer**.
 3. Va sur `youtube.com` et recharge la page.
 
-### iPhone — Safari
+#### iPhone — Safari
 Installe l'app gratuite **« Userscripts »**, active-la dans *Réglages → Safari →
 Extensions*, puis colle le script. Guide pas-à-pas :
 **[`userscript/README.md`](userscript/README.md)**.
 
-> **Réglages (dans les deux cas)** : un bouton **⚙️** apparaît en bas à droite des
+> **Réglages (dans tous les cas)** : un bouton **⚙️** apparaît en bas à droite des
 > pages YouTube et ouvre le panneau d'options (persistant, il survit aux mises à jour).
 
 <details>
-<summary><b>Alternative — installer l'extension (sans app tierce sur ordi)</b></summary>
+<summary><b>Alternative — extension générique pour Firefox / Safari (Xcode)</b></summary>
 
-L'extension est déjà buildée dans **`dist/extension/`**.
+Une seconde extension, bâtie sur le même code que le userscript, est buildée dans
+**`dist/extension/`** (à ne pas confondre avec `dist/chrome`).
 
-1. [Télécharge le dépôt en ZIP](https://github.com/WicktorB/YouTube-Short-Kill/archive/refs/heads/main.zip) et décompresse-le.
-2. **Chrome / Edge / Brave** : `chrome://extensions` → active le **mode développeur** → *Charger l'extension non empaquetée* → sélectionne le dossier **`dist/extension`**.
-3. **Firefox** : `about:debugging#/runtime/this-firefox` → *Charger un module temporaire* → `dist/extension/manifest.json`.
-4. **Safari macOS / iPhone (Xcode)** : voir **[`safari/README.md`](safari/README.md)**.
-
-Les réglages passent par le même bouton **⚙️** sur les pages YouTube.
+- **Firefox** : `about:debugging#/runtime/this-firefox` → *Charger un module temporaire* → `dist/extension/manifest.json` (à refaire à chaque redémarrage de Firefox).
+- **Safari macOS / iPhone (Xcode)** : voir **[`safari/README.md`](safari/README.md)**.
 </details>
 
 ## Réglages (bouton ⚙️)
 
 > Par choix (outil de self-control), les interrupteurs qui **neutralisent** la
 > protection — *masquage des Shorts* et *3 questions* — ne sont **pas** dans le
-> panneau. Pour tout désactiver, il faut passer par l'app **Userscripts**
-> (Tampermonkey sur ordi), un geste volontairement plus difficile.
+> panneau. Pour tout désactiver, il faut passer par l'app **Userscripts** sur
+> iPhone, ou par `chrome://extensions` sur ordi : un geste volontairement plus
+> difficile.
 
 - **Afficher le minuteur** — pastille discrète (haut-centre, translucide, sans
   blocage des clics/taps) ; passe en rouge et pulse dans les 30 dernières
@@ -88,35 +111,62 @@ Les réglages passent par le même bouton **⚙️** sur les pages YouTube.
 
 ## Architecture
 
-Source unique → build → deux formats. Aucune duplication de logique.
+Deux cœurs, qui partagent les réglages par défaut et la feuille de style :
+
+- **`src/core/`** — le cœur d'origine, portable (Safari iOS compris). Il produit
+  le userscript et l'extension générique.
+- **`src/chrome/`** — le cœur de l'extension Chrome, qui s'appuie sur ce que
+  Chromium fournit : CSS injecté par le navigateur, masquage 100 % CSS
+  (`:has()`), API Navigation, `chrome.storage`. Il ne fait tourner **aucun
+  minuteur permanent ni `MutationObserver`** : il ne s'exécute que lors d'un
+  changement de page, et chaque seconde pendant un déblocage.
 
 ```
 src/
-  core/config.js        Réglages par défaut
-  core/app.js           Toute la logique (masquage, garde, minuteur, panneau ⚙️)
-  styles/index.css      Tout le CSS
-  platform/             Adaptateurs de stockage (extension = chrome.storage,
-                        userscript = localStorage)
-  entry/                Points d'entrée (extension.js, userscript.js)
+  core/config.js        Réglages par défaut (partagé)
+  styles/index.css      Tout le CSS (partagé)
+  core/app.js           Cœur d'origine : masquage, garde, minuteur, panneau ⚙️
+  platform/             Stockage du cœur d'origine (localStorage / chrome.storage)
+  entry/                Points d'entrée du cœur d'origine
+  chrome/               Extension Chrome :
+    manifest.json         manifest (et numéro de version de l'extension Chrome)
+    content.js            état, navigation, verrou, minuteur
+    ui.js                 fenêtre des 3 questions, réglages, minuteur, ⚙️
+    store.js  config.js   chrome.storage, validation des réglages
+    background.js         clic sur l'icône → ouvre les réglages
+    extra.css             règles CSS en plus de index.css
+    icons/                icon.svg + PNG générés
 build/build.mjs         esbuild → dist/
 dist/                   Sorties GÉNÉRÉES (commitées pour l'install) :
   utub-short-kill.user.js   le userscript
-  extension/                l'extension prête à charger
+  chrome/                   l'extension Chrome (unpacked)
+  extension/                l'extension générique (Firefox, Safari)
 icons/  tools/  tests/  safari/
 ```
+
+> Le userscript et `dist/chrome` ont **chacun leur numéro de version**
+> (`package.json` pour le premier, `src/chrome/manifest.json` pour la seconde) :
+> faire évoluer l'extension Chrome ne modifie pas le userscript, donc ne
+> déclenche aucune mise à jour sur le téléphone.
 
 ## Développement
 
 ```bash
 npm install
-npm run build                     # régénère dist/ (userscript + extension)
+npm run build                     # régénère dist/ (userscript + les deux extensions)
 npx playwright install chromium   # 1re fois
-npm test                          # syntaxe + manifest + tests extension & userscript
+npm test                          # syntaxe + manifests + tests des trois sorties
 ```
 
 - **On n'édite jamais `dist/`** (généré) — on modifie `src/`, puis `npm run build`.
 - La CI (`.github/workflows/ci.yml`) rebuild, vérifie que `dist/` est à jour, et rejoue les tests à chaque push / PR.
-- Régénérer les icônes : `python3 tools/make_icons.py`.
+- `tests/chrome.test.mjs` charge `dist/chrome` dans un vrai Chromium, comme en
+  « unpacked » (les pages YouTube sont simulées localement).
+- Un changement de sélecteur YouTube se fait dans `src/styles/index.css` (les deux
+  cœurs en profitent) ; les vignettes isolées sont aussi listées dans
+  `src/core/app.js` (userscript) et `src/chrome/extra.css` (extension Chrome).
+- Régénérer les icônes : `node tools/make_chrome_icons.mjs` (extension Chrome),
+  `python3 tools/make_icons.py` (extension générique).
 
 ### Diagnostic des sélecteurs
 

@@ -1,0 +1,23 @@
+/* ============================================================= */
+/* Spécifique extension Chrome — ajouté APRÈS src/styles/index.css */
+/* ============================================================= */
+/* Vignettes de Shorts isolées (recherche, barre latérale, grilles, historique).
+   Le userscript les masque par balayage JS + MutationObserver ; ici c'est le
+   moteur CSS qui s'en charge : aucun JS ne tourne quand la page change, et une
+   vignette recyclée par YouTube pour une vidéo normale réapparaît toute seule. */
+html:not([data-usk-channel="1"])
+  :is(
+    ytd-video-renderer,
+    ytd-grid-video-renderer,
+    ytd-compact-video-renderer,
+    ytd-reel-item-renderer,
+    yt-lockup-view-model,
+    ytm-video-with-context-renderer,
+    ytm-media-item
+  ):has(a[href^="/shorts/"]) {
+  display: none !important;
+}
+
+#usk-gear {
+  user-select: none;
+}

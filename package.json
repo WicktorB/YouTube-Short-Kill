@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node build/build.mjs",
     "check": "node tests/check.mjs",
-    "test": "node tests/check.mjs && node tests/extension.test.mjs && node tests/userscript.test.mjs && node tests/trustedtypes.test.mjs"
+    "test": "node tests/check.mjs && node tests/extension.test.mjs && node tests/userscript.test.mjs && node tests/trustedtypes.test.mjs && node tests/chrome.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",

@@ -13,6 +13,15 @@ const JS_FILES = [
   "src/platform/storage-userscript.js",
   "src/entry/extension.js",
   "src/entry/userscript.js",
+  "src/chrome/config.js",
+  "src/chrome/store.js",
+  "src/chrome/ui.js",
+  "src/chrome/content.js",
+  "src/chrome/background.js",
+  "dist/chrome/content.js",
+  "dist/chrome/background.js",
+  "tools/make_chrome_icons.mjs",
+  "tests/chrome.test.mjs",
   "build/build.mjs",
   "dist/utub-short-kill.user.js",
   "dist/extension/content.js",
@@ -48,9 +57,33 @@ try {
   failures++;
 }
 
+console.log("[check] dist/chrome/manifest.json");
+try {
+  const m = JSON.parse(readFileSync(join(ROOT, "dist/chrome/manifest.json"), "utf8"));
+  if (m.manifest_version !== 3) throw new Error("manifest_version doit valoir 3");
+  if (!m.permissions.includes("storage")) throw new Error('permission "storage" manquante');
+  const files = [m.background.service_worker].concat(
+    m.content_scripts[0].js,
+    m.content_scripts[0].css,
+    Object.values(m.icons),
+    Object.values(m.action.default_icon)
+  );
+  for (const f of files) readFileSync(join(ROOT, "dist/chrome", f));
+  console.log("  ✓ manifest.json (v" + m.version + ", " + files.length + " fichiers référencés présents)");
+} catch (e) {
+  console.log("  ✗ manifest.json — " + e.message);
+  failures++;
+}
+
 // YouTube impose les Trusted Types : toute assignation via innerHTML échoue.
 console.log("[check] pas de .innerHTML (incompatible Trusted Types de YouTube)");
-for (const f of ["src/core/app.js", "dist/utub-short-kill.user.js", "dist/extension/content.js"]) {
+for (const f of [
+  "src/core/app.js",
+  "dist/utub-short-kill.user.js",
+  "dist/extension/content.js",
+  "src/chrome/ui.js",
+  "dist/chrome/content.js"
+]) {
   const txt = readFileSync(join(ROOT, f), "utf8");
   if (/\.innerHTML\b/.test(txt)) {
     console.log("  ✗ innerHTML interdit dans " + f);
